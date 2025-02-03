@@ -26,11 +26,8 @@ globals:
   configProduction: ${globals.configPath}/env/config.production.json
 
 nodes:
-- cloudlets: 18
-  nodeType: nodejs16-forever
-  env:
-    NODE_ENV: production
-    PACKAGE_MANAGER: yarn
+- cloudlets: 16
+  nodeType: nodejs20-forever
 - cloudlets: 8
   nodeType: mysql
 
@@ -43,7 +40,6 @@ onInstall:
 - migration_lock_remove
 - restartNodes:
     nodeGroup: [cp]
-
 
 actions:
   deployArchive:
@@ -59,14 +55,16 @@ actions:
       sed -i 's|2368|8080|g' ${globals.defaultConfig};
       sed -i 's|"url":\ "http:\/\/localhost:2368",|"url":\ "http:\/\/${env.domain}",|g' ${globals.configDevelopment};
       sed -i 's|"client":\ "sqlite3",|"client":\ "mysql",|g' ${globals.configDevelopment};
-      sed -i 's|"filename":\ "content\/data\/ghost-dev.db"|"host":\ "${nodes.sqldb.master.intIP}",\n"user":\ "root",\n"password":\ "${nodes.mysql.password}",\n"database":\ "ghost"|g' ${globals.configDevelopment};
+      sed -i 's|"filename":\ "content\/data\/ghost-dev.db"|"host":\ "${nodes.sqldb.master.intIP}",\n"user":\ "ghost",\n"password":\ "${globals.DB_PASS}",\n"database":\ "ghost"|g' ${globals.configDevelopment};
       sed -i 's|127.0.0.1|${nodes.sqldb.master.intIP}|g' ${globals.configProduction};
       sed -i 's|"password"\ :\ ""|"password"\ :\ "${nodes.mysql.password}"|g' ${globals.configProduction};
       cd $HOME/ROOT;
 
   createDb:
-       cmd[sqldb]:
-         mysql -uroot -p${nodes.mysql.password} -e "create database ghost" 2>&1 1>/dev/null
+    cmd[sqldb]: |-
+      MYSQL_PWD=${nodes.sqldb.password} mysql -uroot -e "CREATE DATABASE ghost;"
+      MYSQL_PWD=${nodes.sqldb.password} mysql -uroot -e "CREATE USER 'ghost'@'%' IDENTIFIED BY '${globals.DB_PASS}';"
+      MYSQL_PWD=${nodes.sqldb.password} mysql -uroot -e "GRANT ALL PRIVILEGES ON ghost.* TO 'ghost'@'%' WITH GRANT OPTION;"
   
   migration_lock_remove:
        cmd[sqldb]:
