@@ -16,20 +16,33 @@ description:
   short: The professional publishing platform
 
 success: /texts/success.md
+
+onBeforeInstall: |
+  return {
+    result: 0,
+    ssl: !!jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value,
+    nodes: [{
+      nodeType: "nodejs20-pm2",
+      cloudlets: 16,
+      env: {
+        NODE_ENV: "production"
+      },
+      nodeGroup: "cp"
+    }, {
+      nodeType: "mysql",
+      cloudlets: 8,
+      nodeGroup: "sqldb"
+    }]
+  }
   
+skipNodeEmails: true
+nodes: definedInOnBeforeInstall
+
 globals:
   DB_USER: ghost-${fn.random}
   DB_PASS: ${fn.password(10)}
   APP_DIR: /home/jelastic/ROOT
   PROTOCOL: http
-
-nodes:
-- cloudlets: 16
-  nodeType: nodejs20-pm2
-  env:
-    NODE_ENV: production
-- cloudlets: 8
-  nodeType: mysql
 
 onInstall:
   - set-protocol
@@ -82,3 +95,13 @@ actions:
       pm2 delete all; pm2 unstartup; pm2 flush;
       pm2 start /home/jelastic/ROOT/ecosystem.config.js;
       pm2 save;
+
+  migration-lock-remove:
+    cmd[sqldb]:
+      mysql -u${globals.DB_USER} -p${globals.DB_PASS} -e "
+        use ghost;
+        SET @table_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='ghost' AND table_name='migrations_lock');
+        IF @table_exists > 0 THEN
+          UPDATE migrations_lock SET locked=0 WHERE lock_key='km01';
+        END IF;"
+      
