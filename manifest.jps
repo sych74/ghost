@@ -1,5 +1,3 @@
-version: '1.5'
-appVersion: latest
 type: install
 id: ghost
 name: Ghost
@@ -23,6 +21,7 @@ globals:
   DB_USER: ghost-${fn.random}
   DB_PASS: ${fn.password(10)}
   APP_DIR: /home/jelastic/ROOT
+  PROTOCOL: http
 
 nodes:
 - cloudlets: 16
@@ -33,6 +32,7 @@ nodes:
   nodeType: mysql
 
 onInstall:
+  - set-protocol
   - create-db
   - install-ghost-cli
   - install-ghost
@@ -41,6 +41,17 @@ onInstall:
       nodeGroup: [cp]
 
 actions:
+  
+  set-protocol:
+    - script: |
+        return {
+          result:0,
+          ssl: jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value
+        }
+    - if (${response.ssl}):
+        setGlobals:
+          PROTOCOL: https
+  
   create-db:
     cmd[sqldb]: |-
       MYSQL_PWD=${nodes.sqldb.password} mysql -uroot -e "CREATE DATABASE ghost;"
@@ -54,7 +65,7 @@ actions:
   install-ghost:
     cmd[cp]: |-
       rm -rf ${globals.APP_DIR}/*;
-      ghost install ${globals.version_ghost} --url http://${env.domain} \
+      ghost install ${globals.version_ghost} --url ${globals.PROTOCOL}://${env.domain} \
       --ip ${nodes.cp.master.intIP} --port 8080 \
       --db mysql --dbhost ${nodes.sqldb.master.intIP} --dbuser ${globals.DB_USER} --dbpass ${globals.DB_PASS} --dbname ghost \
       --dir ${globals.APP_DIR} --no-setup-linux-user --no-setup-nginx --no-setup-ssl --no-setup-systemd --no-start;
