@@ -37,7 +37,8 @@ onInstall:
   - install-ghost-cli
   - install-ghost
   - create-pm2-ecosystem
-  - migration-lock-remove
+  - restartNodes:
+      nodeGroup: [cp]
 
 actions:
   create-db:
@@ -53,7 +54,7 @@ actions:
   install-ghost:
     cmd[cp]: |-
       rm -rf ${globals.APP_DIR}/*;
-      ghost install --url http://${env.domain} \
+      ghost install ${globals.version_ghost} --url http://${env.domain} \
       --ip ${nodes.cp.master.intIP} --port 8080 \
       --db mysql --dbhost ${nodes.sqldb.master.intIP} --dbuser ${globals.DB_USER} --dbpass ${globals.DB_PASS} --dbname ghost \
       --dir ${globals.APP_DIR} --no-setup-linux-user --no-setup-nginx --no-setup-ssl --no-setup-systemd --no-start;
@@ -70,7 +71,3 @@ actions:
       pm2 delete all; pm2 unstartup; pm2 flush;
       pm2 start /home/jelastic/ROOT/ecosystem.config.js;
       pm2 save;
-
-  migration-lock-remove:
-    cmd[sqldb]:
-      mysql -u${globals.DB_USER} -p${globals.DB_PASS} -e "use ghost; UPDATE migrations_lock set locked=0 where lock_key='km01';"
