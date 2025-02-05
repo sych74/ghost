@@ -1,3 +1,5 @@
+version: '1.5'
+appVersion: latest
 type: install
 id: ghost
 name: Ghost
@@ -57,8 +59,18 @@ actions:
       --dir ${globals.APP_DIR} --no-setup-linux-user --no-setup-nginx --no-setup-ssl --no-setup-systemd --no-start;
 
   create-pm2-ecosystem:
-    log: -------create-pm2-ecosystem
+    cmd[cp]: |-
+      echo "module.exports = {
+              apps : [{
+              name   : \"ghost\",
+              script : \"${globals.APP_DIR}/current/index.js\",
+              cwd : \"${globals.APP_DIR}\"
+              }]
+            }" > ${globals.APP_DIR}/ecosystem.config.js;
+      pm2 delete all; pm2 unstartup; pm2 flush;
+      pm2 start /home/jelastic/ROOT/ecosystem.config.js;
+      pm2 save;
 
   migration-lock-remove:
     cmd[sqldb]:
-      mysql -u${globals.DB_USER} -p${globals.DB_USER} -e "use ghost; UPDATE migrations_lock set locked=0 where lock_key='km01';"
+      mysql -u${globals.DB_USER} -p${globals.DB_PASS} -e "use ghost; UPDATE migrations_lock set locked=0 where lock_key='km01';"
