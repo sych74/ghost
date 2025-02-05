@@ -50,6 +50,7 @@ onInstall:
   - install-ghost-cli
   - install-ghost
   - create-pm2-ecosystem
+  - migration-lock-remove
   - restartNodes:
       nodeGroup: [cp]
 
@@ -98,10 +99,5 @@ actions:
 
   migration-lock-remove:
     cmd[sqldb]:
-      mysql -u${globals.DB_USER} -p${globals.DB_PASS} -e "
-        use ghost;
-        SET @table_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='ghost' AND table_name='migrations_lock');
-        IF @table_exists > 0 THEN
-          UPDATE migrations_lock SET locked=0 WHERE lock_key='km01';
-        END IF;"
+      mysql -u${globals.DB_USER} -p${globals.DB_PASS} -e "use ghost; UPDATE migrations_lock SET locked=0 WHERE lock_key='km01';"
       
