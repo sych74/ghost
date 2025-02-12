@@ -1,7 +1,8 @@
 type: install
+jpsVersion: 8.3.1
 id: ghost
 name: Ghost
-baseUrl: https://raw.githubusercontent.com/sych74/ghost/master
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/ghost/master
 logo: /images/ghost-white.png
 homepage: https://ghost.org/
 
